@@ -24,6 +24,8 @@ const tf = require('@tensorflow/tfjs');
 const cv = require('opencv4nodejs');
 const { createImageData, createCanvas } = require('canvas')
 
+const { Worker } = require('worker_threads');
+
 // If DEBUG is true, the prediction time will be printed, and an image with the
 // detected poses will be shown.
 const DEBUG = false;
@@ -189,23 +191,43 @@ async function main() {
 
     if (!Number.isInteger(paramInputResolution))
         paramInputResolution = JSON.parse(paramInputResolution);
-
-    // Load PoseNet dependencies and model.
-    if (paramGPU)
-        require('@tensorflow/tfjs-node-gpu');
-    else
-        require('@tensorflow/tfjs-node');
-    const posenet = require('@tensorflow-models/posenet');
-        
-    const net = await posenet.load({
+    
+    // TODO: document this
+    posenet_config = {
+        useGPU: paramGPU,
         architecture: paramArchitecture,
         outputStride: paramOutputStride,
         inputResolution: paramInputResolution,
         multiplier: paramMultiplier,
-        quantBytes: paramQuantBytes,
-    });
+        quantBytes: paramQuantBytes
+    }
+    const worker = new Worker(__dirname + '/posenet_worker.js', {workerData: posenet_config});
 
-    rosnodejs.log.info('PoseNet model loaded.');
+    
+
+
+
+
+
+
+    worker.on('message', posenetResultCallback);
+
+    // Load PoseNet dependencies and model.
+    // if (paramGPU)
+    //     require('@tensorflow/tfjs-node-gpu');
+    // else
+    //     require('@tensorflow/tfjs-node');
+    // const posenet = require('@tensorflow-models/posenet');
+        
+    // const net = await posenet.load({
+    //     architecture: paramArchitecture,
+    //     outputStride: paramOutputStride,
+    //     inputResolution: paramInputResolution,
+    //     multiplier: paramMultiplier,
+    //     quantBytes: paramQuantBytes,
+    // });
+
+    // rosnodejs.log.info('PoseNet model loaded.');
 
     // Creates the publishing topic and subscribe to the image topic.
     let posePub = rosNode.advertise(paramPosesTopic, pose_msgs.Poses);
@@ -247,24 +269,24 @@ async function main() {
      * @param {sensors_msgs.Image} imgData A ROS image message.
      */
     async function singlePoseCallback(imgData){
-        let t0 = rosnodejs.Time.toSeconds(imgData.header.stamp)
-        let t1 = rosnodejs.Time.toSeconds(rosnodejs.Time.now())
-        if(DEBUG)
-            console.log("Delay between messages: %f", t1-t0);
-        if((t1 - t0) > paramMaxDelay)
-            return;
+        // let t0 = rosnodejs.Time.toSeconds(imgData.header.stamp)
+        // let t1 = rosnodejs.Time.toSeconds(rosnodejs.Time.now())
+        // if(DEBUG)
+        //     console.log("Delay between messages: %f", t1-t0);
+        // if((t1 - t0) > paramMaxDelay)
+        //     return;
         
-        const imgCanvas = formatImage(imgData);
-        if(DEBUG)
-            console.time("posenet")
-        pose = await net.estimateSinglePose(imgCanvas, 
-            {flipHorizontal: paramFlipHorizontal});
-        if(DEBUG){
-            console.timeEnd("posenet");
-            debugView(imgData, [pose], paramMinPoseConf, paramMinPartConf);
-        }
+        // const imgCanvas = formatImage(imgData);
+        // if(DEBUG)
+        //     console.time("posenet")
+        // pose = await net.estimateSinglePose(imgCanvas, 
+        //     {flipHorizontal: paramFlipHorizontal});
+        // if(DEBUG){
+        //     console.timeEnd("posenet");
+        //     debugView(imgData, [pose], paramMinPoseConf, paramMinPartConf);
+        // }
         
-        posePub.publish(buildOutputMessage([pose], imgData.header));
+        // posePub.publish(buildOutputMessage([pose], imgData.header));
     }
 
 
@@ -276,28 +298,35 @@ async function main() {
      * @param {sensors_msgs.Image} imgData A ROS image message.
      */
     async function multiPoseCallback(imgData){
-        let t0 = rosnodejs.Time.toSeconds(imgData.header.stamp)
-        let t1 = rosnodejs.Time.toSeconds(rosnodejs.Time.now())
-        if(DEBUG)
-            console.log("Delay between messages: %f", t1-t0);
-        if((t1 - t0) > paramMaxDelay)
-            return;
+        // console.log("received ROS msg");
+        worker.postMessage(imgData);
+        // let t0 = rosnodejs.Time.toSeconds(imgData.header.stamp)
+        // let t1 = rosnodejs.Time.toSeconds(rosnodejs.Time.now())
+        // if(DEBUG)
+        //     console.log("Delay between messages: %f", t1-t0);
+        // if((t1 - t0) > paramMaxDelay)
+        //     return;
 
-        if(DEBUG)
-            console.time("posenet")
+        // if(DEBUG)
+        //     console.time("posenet")
 
-        const imgCanvas = formatImage(imgData);
-        poses = await net.estimateMultiplePoses(imgCanvas, {
-            flipHorizontal: paramFlipHorizontal,
-            maxDetections: paramMaxDetection,
-            scoreThreshold: paramMinPartConf,
-            nmsRadius: paramNmsRadius});
+        // const imgCanvas = formatImage(imgData);
+        // poses = await net.estimateMultiplePoses(imgCanvas, {
+        //     flipHorizontal: paramFlipHorizontal,
+        //     maxDetections: paramMaxDetection,
+        //     scoreThreshold: paramMinPartConf,
+        //     nmsRadius: paramNmsRadius});
             
-        if(DEBUG){
-            console.timeEnd("posenet");
-            debugView(imgData, poses, paramMinPoseConf, paramMinPartConf);
-        }
-        posePub.publish(buildOutputMessage(poses, imgData.header));
+        // if(DEBUG){
+        //     console.timeEnd("posenet");
+        //     debugView(imgData, poses, paramMinPoseConf, paramMinPartConf);
+        // }
+        // posePub.publish(buildOutputMessage(poses, imgData.header));
+    }
+
+    // TODO add documentation.
+    function posenetResultCallback(message) {
+        console.log(message);
     }
 
 

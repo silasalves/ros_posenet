@@ -1,7 +1,7 @@
 <launch>
 
     <!-- Launch posenet with all params -->
-    <node pkg="ros_posenet" type="posenet.js" name="posenet" output="screen">
+    <node pkg="ros_posenet" type="posenet_ros_node.js" name="posenet" output="screen">
         <!-- General configuration -->
 
         <!-- Name of the input topic with the color images. -->
