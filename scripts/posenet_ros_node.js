@@ -11,6 +11,8 @@
  * as well as the single and multi-pose algorithms.
  */
 
+var sizeof = require('object-sizeof')
+
 // Packages required by ROS.
 const rosnodejs = require('rosnodejs');
 const sensor_msgs = rosnodejs.require('sensor_msgs').msg;
@@ -224,7 +226,8 @@ async function main() {
         lipHorizontal: paramFlipHorizontal,
         maxDetection: paramMaxDetection,
         minPartConf: paramMinPartConf,
-        nmsRadius: paramNmsRadius
+        nmsRadius: paramNmsRadius,
+        minPoseConf: paramMinPoseConf
     }
 
     // const worker = new Worker(__dirname + '/posenet_worker.js', {workerData: posenet_config});
@@ -337,11 +340,16 @@ async function main() {
                 rosnodejs.log.debug(`Sending image to PoseNet with delay = ${t1-t0}.`);
                 //let tensor = tf.tensor3d(imageMsg.data, [imageMsg.height,imageMsg.width,3], 'int32');
                 // const imgData = formatImage(imageMsg); // TODO change var name
-                worker.send({
+
+                msg = {
                     type: 'classify',
                     image: imageMsg, 
                     metadata: imageMsg.header
-                });
+                };
+                console.log(`Msg size = ${sizeof(msg)}`);
+                console.time('parent -> child');
+                worker.send(msg);
+                console.timeEnd('parent -> child');
             } else
                 rosnodejs.log.debug(`Currently in state '${currentState}'. Discarding image.`)
         });

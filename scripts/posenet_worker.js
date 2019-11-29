@@ -17,6 +17,105 @@ const Mutex = require('async-mutex').Mutex;
 
 const cv = require('opencv4nodejs');
 const { createImageData, createCanvas } = require('canvas')
+
+const nose = 0
+const leftEye = 1
+const rightEye = 2
+const leftEar = 3
+const rightEar = 4
+const leftShoulder = 5
+const rightShoulder = 6
+const leftElbow = 7
+const rightElbow = 8
+const leftWrist = 9
+const rightWrist = 10
+const leftHip = 11
+const rightHip = 12
+const leftKnee = 13
+const rightKnee = 14
+const leftAnkle = 15
+const rightAnkle = 16
+
+const connected_part_names = [
+    [leftHip, leftShoulder], [leftElbow, leftShoulder],
+    [leftElbow, leftWrist], [leftHip, leftKnee],
+    [leftKnee, leftAnkle], [rightHip, rightShoulder],
+    [rightElbow, rightShoulder], [rightElbow, rightWrist],
+    [rightHip, rightKnee], [rightKnee, rightAnkle],
+    [leftShoulder, rightShoulder], [leftHip, rightHip]]
+
+const skeleton_colors=[
+    new cv.Vec3(0, 0, 255),
+    new cv.Vec3(0, 255, 255),
+    new cv.Vec3(0, 255, 255),
+    new cv.Vec3(0, 255, 255),
+    new cv.Vec3(102, 102, 255),
+    new cv.Vec3(128, 128, 128),
+    new cv.Vec3(102, 0, 51),
+    new cv.Vec3(0, 0, 153),
+    new cv.Vec3(102, 102, 0),
+    new cv.Vec3(153, 51, 255),
+    new cv.Vec3(102, 0, 0),
+    new cv.Vec3(0, 0, 0)
+]
+
+
+/**
+ * Draws the detected keypoints over the input image and shows to the user.
+ * 
+ * Used for debugging only.
+ * @param {sensor_msgs.Image} imgData A ROS image message.
+ * @param {Pose} poses The poses detected by PoseNet.
+ */
+function debugView (imgData, poses, minPoseScore, minPartScore) {
+    if(imgData.encoding == "rgb8")
+        conversionCode = cv.COLOR_RGB2BGR;
+    else if(imgData.encoding == "bgr8")
+        conversionCode = null;
+    else
+        throw "Unknown image format.";
+        
+    img = new cv.Mat(Buffer.from(imgData.data), imgData.height, 
+            imgData.width, cv.CV_8UC3);
+    
+    if(conversionCode != null)
+        img = img.cvtColor(conversionCode);
+    
+    console.log(Object.keys(poses).length)
+    
+    poses.forEach( function(pose, i) {
+        if (pose['score'] < minPoseScore)
+            return;
+
+        if (i>11)
+            i = 11;
+        color = skeleton_colors[i]
+
+        connected_part_names.forEach( pair => {
+            if (pose['keypoints'][pair[0]]['score'] > 0.2 && pose['keypoints'][pair[1]]['score'] > 0.2) {
+                let p0 = pose['keypoints'][pair[0]]['position']
+                let p1 = pose['keypoints'][pair[1]]['position']
+                img.drawLine(new cv.Point(p0['x'], p0['y']), new cv.Point(p1['x'], p1['y']),
+                    color, 8);
+            }
+        });
+
+        if(pose['score'] > minPartScore){
+            pose['keypoints'].forEach(keypoint => {
+                if(keypoint['score'] > 0.2)
+                    img.drawCircle(new cv.Point(
+                        keypoint['position']['x'], 
+                        keypoint['position']['y']),
+                    5, color, 2, 8, 0);
+            });
+        }
+    });
+
+    cv.imshow('test', img)
+    cv.waitKey(1);
+}
+
+
 /**
  * Provides the `/posenet` node and output topic.
  * 
@@ -50,15 +149,16 @@ async function main() {
     maxDetection = parseInt(process.argv[10]);
     minPartConf = parseFloat(process.argv[11]);
     nmsRadius = parseInt(process.argv[12]);
+    minPoseConf = parseFloat(process.argv[13]);
 
-    separatorIdx = process.argv[7].indexOf('x');
+    separatorIdx = process.argv[6].indexOf('x');
     if (separatorIdx != -1){
         inputResolution = {
-            width: process.argv[7].slice(0, separatorIdx),
-            height: process.argv[7].slice(separatorIdx+1),
+            width: parseInt(process.argv[6].slice(0, separatorIdx)),
+            height: parseInt(process.argv[6].slice(separatorIdx+1)),
         }
     } else{
-        inputResolution = parseInt(process.argv[7]);
+        inputResolution = parseInt(process.argv[6]);
     }
 
     // Load PoseNet dependencies and model.
@@ -71,14 +171,18 @@ async function main() {
         console.log("loading tfjs-cpu");
     }
     const posenet = require('@tensorflow-models/posenet');
-        
-    const net = await posenet.load({
+
+    posenet_config = {
         architecture: architecture,
         outputStride: outputStride,
         inputResolution: inputResolution,
         multiplier: multiplier,
         quantBytes: quantBytes,
-    });
+    };
+
+    console.log(posenet_config);
+        
+    const net = await posenet.load(posenet_config);
 
     stateMutex.acquire().then(release => {
         currentState = State.WAITING_INPUT;
@@ -126,31 +230,33 @@ async function main() {
 
             // console.log(message.image);
 
-            let image000 = formatImage(message.image);
+            let image = formatImage(message.image);
 
             if(multiPose){
-                poses = await net.estimateMultiplePoses(image000, {
+                poses = await net.estimateMultiplePoses(image, {
                     flipHorizontal: false,
                     maxDetections: 10,
                     scoreThreshold: 0.1,
                     nmsRadius: 30});
             } else{
-                poses = await net.estimateSinglePose(image000, 
+                poses = await net.estimateSinglePose(image, 
                             {flipHorizontal: FlipHorizontal});
                 poses = [poses];
             }
 
-            console.log(poses)
+            debugView(message.image, poses, minPoseConf, minPartConf);
 
             release = await stateMutex.acquire();
             currentState = State.WAITING_INPUT;
             release();
 
+            console.time('child -> parent');
             process.send({
                 type: 'result', 
                 poses: poses,
                 metadata: message.metadata
             });
+            console.timeEnd('child -> parent');
         } else {
             process.send({
                 type: 'error', 
@@ -189,8 +295,6 @@ async function main() {
         );
         imgCtx.putImageData(tempImg, 0, 0);
 
-        cv.imshow('test', img.cvtColor(cv.COLOR_RGB2BGR));
-        cv.waitKey(1);
         return imgCanvas; //new Uint8ClampedArray(img.getData());
     }
 }
