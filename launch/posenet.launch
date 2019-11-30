@@ -4,11 +4,8 @@
     <node pkg="ros_posenet" type="posenet_ros_node.js" name="posenet" output="screen">
         <!-- General configuration -->
 
-        <!-- Wether we are using a topic with compressed images or not. -->
-        <param name="use_compressed" value="true" />
-
         <!-- Name of the input topic with the color images. -->
-        <param name="image_topic" value="/camera/color/image_raw/compressed" />
+        <param name="compressed_image_topic" value="/camera/color/image_raw/compressed" />
 
         <!-- Name of the output topic for the detected poses. -->
         <param name="poses_topic" value="/poses" />

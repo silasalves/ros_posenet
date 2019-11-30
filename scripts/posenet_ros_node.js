@@ -195,7 +195,7 @@ async function main() {
     rosnodejs.log.info('Node /posenet registered.');
     
     // Load all parameters from `posenet.launch`.
-    const paramImgTopic = await getParam('/posenet/image_topic', '/image_raw');
+    const paramImgTopic = await getParam('/posenet/compressed_image_topic', '/image_raw');
     const paramPosesTopic = await getParam('/posenet/poses_topic', '/poses');
     const paramGPU = await getParam('/posenet/gpu', false);
     const paramMaxDelay = await getParam('posenet/max_msg_time_diff', 0.03);
