@@ -5,7 +5,7 @@
         <!-- General configuration -->
 
         <!-- Name of the input topic with the color images. -->
-        <param name="image_topic" value="/camera/color/image_raw" />
+        <param name="compressed_image_topic" value="/camera/color/image_raw/compressed" />
 
         <!-- Name of the output topic for the detected poses. -->
         <param name="poses_topic" value="/poses" />
