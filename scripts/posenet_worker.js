@@ -231,6 +231,7 @@ async function main() {
             // console.log(message.image);
 
             let image = formatImage(message.image);
+            console.log(image);
 
             if(multiPose){
                 poses = await net.estimateMultiplePoses(image, {
@@ -244,7 +245,9 @@ async function main() {
                 poses = [poses];
             }
 
-            debugView(message.image, poses, minPoseConf, minPartConf);
+            // poses = [];
+
+            //debugView(message.image, poses, minPoseConf, minPartConf);
 
             release = await stateMutex.acquire();
             currentState = State.WAITING_INPUT;
@@ -272,26 +275,33 @@ async function main() {
      * @returns {Canvas} A Canvas object with the same content as the ROS image. // TODO update
      */
     function formatImage(imgData){
+        img = cv.imdecode(Buffer.from(imgData.data), cv.IMREAD_COLOR);
+        // console.log(img);
+        // cv.imshow('received', img);
+        // cv.waitKey(1);
+
         // Converts the original color mode to RGBA. 
         let conversionCode = null;
 
-        if(imgData.encoding == "rgb8")
-            conversionCode = cv.COLOR_RGB2RGBA;
-        else if(imgData.encoding == "bgr8")
-            conversionCode = cv.COLOR_BGR2RGBA;
-        else
-            throw "Unknown image format.";
+        // if(imgData.encoding == "rgb8")
+        //     conversionCode = cv.COLOR_RGB2RGBA;
+        // else if(imgData.encoding == "bgr8")
+        //     conversionCode = cv.COLOR_BGR2RGBA;
+        // else
+        //     throw "Unknown image format.";
         
-        let img = new cv.Mat(Buffer.from(imgData.data), imgData.height, 
-                    imgData.width, cv.CV_8UC3).cvtColor(conversionCode);
+        // let img = new cv.Mat(Buffer.from(imgData.data), imgData.height, 
+        //             imgData.width, cv.CV_8UC3).cvtColor(conversionCode);
+
+        img = img.cvtColor(cv.COLOR_BGR2RGBA);
         
         // Creates the Canvas object, draw and return it.
-        const imgCanvas = createCanvas(imgData.width, imgData.height);
+        const imgCanvas = createCanvas(img.cols, img.rows);
         const imgCtx = imgCanvas.getContext('2d');
         let tempImg = createImageData(
             new Uint8ClampedArray(img.getData()),
-            imgData.width,
-            imgData.height
+            img.cols,
+            img.rows
         );
         imgCtx.putImageData(tempImg, 0, 0);
 

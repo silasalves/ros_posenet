@@ -237,7 +237,7 @@ async function main() {
     worker.on('error', workerErrorCallback);
 
     posePub = rosNode.advertise(paramPosesTopic, pose_msgs.Poses);
-    imgSub = rosNode.subscribe(paramImgTopic, sensor_msgs.Image, 
+    imgSub = rosNode.subscribe(paramImgTopic, sensor_msgs.CompressedImage, 
             rosImageCallback, {queueSize: 1});
 
     // Main function ends here. Bellow you can find the utility functions and
