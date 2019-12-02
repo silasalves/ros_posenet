@@ -70,6 +70,9 @@ async function main() {
     const stateMutex = new Mutex(); // Controls access to currentState.
     let currentState = State.LOADING;
 
+    // Tracks the seq field of the response Header.
+    let seq = 0;
+
     // Register node with ros; `rosNode` is used to load the parameters.
     const rosNode = await rosnodejs.initNode("/posenet")
 
@@ -326,7 +329,6 @@ async function main() {
         return default_value;
     }
 
-
     /**
      * Converts a Pose object into a ROS message.
      * @param {[Poses]} poses The poses outputted by PoseNet.
@@ -334,6 +336,7 @@ async function main() {
      */
     function buildOutputMessage(poses, header) {
         let msg = new pose_msgs.Poses();
+        msg.header.seq = seq++;
         msg.header.stamp = header.stamp;
         msg.header.frame_id = header.frame_id;
         for (pIdx = 0; pIdx < poses.length; pIdx++) {
