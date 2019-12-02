@@ -38,7 +38,7 @@
         <param name="multiplier" value="0.75" />
 
         <!-- Scale factor for the input images -->
-        <param name="quant_bytes" value="4" />
+        <param name="quant_bytes" value="2" />
 
         <!-- Whether the input image should be flipped or not. -->
         <param name="flip_horizontal" value="false" />
@@ -51,10 +51,10 @@
         <param name="max_detection" value="10" />
         
         <!-- Minimum confidence to consider a pose valid. -->
-        <param name="min_pose_confidence" value="0.1" />
+        <param name="min_pose_confidence" value="0.15" />
 
         <!-- Multi-pose only: minimum confidence for the body parts.  -->
-        <param name="min_part_confidence" value="0.10" />
+        <param name="min_part_confidence" value="0.1" />
 
         <!-- Radius of the Non-Maximum Suppression. -->
         <param name="nms_radius" value="30" />
