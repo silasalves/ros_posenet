@@ -34,8 +34,9 @@
         <param name="output_stride" value="16" />
 
         <!-- The size the image is resized to before it is fed into the PoseNet.
-             Can be one of 161, 193, 257, 289, 321, 353, 385, 417, 449, 481,
-             513, and 801. Defaults to 257. -->
+             Can be either an integer (e.g., "500", as in Google's demo) or a
+             two integers separated by 'x' representing the width and height
+             (e.g., "640x480"). -->
         <param name="input_resolution" value="640x360" />
         
         <!-- MobileNetV1 only. Multiplier for the depth for all convolution ops.
