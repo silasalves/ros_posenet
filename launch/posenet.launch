@@ -17,6 +17,11 @@
 
         <!-- Whether PoseNet should run over the GPU (true) or CPU (false). -->
         <param name="gpu" value="false" />
+
+        <!-- Absolute path for the downloaded models. If this parameter is 
+             commented out or set to "", PoseNet will download the models from
+             the Internet on-demand -->
+        <param name="models_path" value="$(find ros_posenet)/models" />
         
         <!-- PoseNet configuration. Please, refer to the original repository for
              detailed information on the parameters:

@@ -104,6 +104,7 @@ async function main() {
     const paramMinPartConf = await getParam('/posenet/min_part_confidence', 
                                             0.5);
     const paramNmsRadius = await getParam('/posenet/nms_radius', 30);
+    const paramModelsPath = await getParam('/posenet/models_path', "");
 
     // Parameters sent to the child process as command line arguments.
     posenet_config = {
@@ -119,6 +120,7 @@ async function main() {
         minPartConf: paramMinPartConf,
         nmsRadius: paramNmsRadius,
         minPoseConf: paramMinPoseConf,
+        modelsPath: paramModelsPath,
         debug: DEBUG
     }
 

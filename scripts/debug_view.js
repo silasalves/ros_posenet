@@ -68,16 +68,15 @@ exports.debugView = function (imgData, poses, minPoseScore, minPartScore) {
         if (pose['score'] < minPoseScore)
             return;
 
-        if (i>11)
-            i = 11;
-        color = skeleton_colors[i]
+        color = skeleton_colors[i % skeleton_colors.length]
 
         connected_part_names.forEach( pair => {
-            if (pose['keypoints'][pair[0]]['score'] > 0.2 && pose['keypoints'][pair[1]]['score'] > 0.2) {
+            if (pose['keypoints'][pair[0]]['score'] > 0.2 && 
+                pose['keypoints'][pair[1]]['score'] > 0.2) {
                 let p0 = pose['keypoints'][pair[0]]['position']
                 let p1 = pose['keypoints'][pair[1]]['position']
-                img.drawLine(new cv.Point(p0['x'], p0['y']), new cv.Point(p1['x'], p1['y']),
-                    color, 8);
+                img.drawLine(new cv.Point(p0['x'], p0['y']), 
+                             new cv.Point(p1['x'], p1['y']), color, 8);
             }
         });
 
@@ -92,6 +91,6 @@ exports.debugView = function (imgData, poses, minPoseScore, minPartScore) {
         }
     });
 
-    cv.imshow('test', img)
+    cv.imshow('ros_posenet_debug', img)//.resize(1080,1920))
     cv.waitKey(1);
 }

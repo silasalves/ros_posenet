@@ -1,45 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""ros_posenet Model Downloader Script
+
+Downloads the files from Google server and save to the disk. The default path
+is ``{ROS_POSENET_DIR}/models``, but you can use a custom path by setting the
+``posenet_download/path`` parameter, such as::
+
+    $ rosrun ros_posenet download_models.py _path:=/MY/CUSTOM/PATH
+"""
+
 import requests
 import os
 import sys
 import errno
+import rospy
 
-# Mobilenet
-
-# Quant = 2
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/quant2/075/model-stride16.json
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/quant2/075/group1-shard1of1.bin
-
-# Quant = 4
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/075/model-stride16.json
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/075/group1-shard1of2.bin
-
-
-# RESNET
-
-# Quant = 1
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/quant1/model-stride32.json
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/quant1/group1-shard1of6.bin
-
-# Quant = 2
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/quant2/model-stride32.json
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/quant2/group1-shard1of12.bin
-
-# Quant = 4
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/model-stride32.json
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard1of23.bin
-
-# Stride = 16
-# https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/quant2/model-stride16.json
-
+# Information about the models available for download.
 MODELS = [
     {
         "name": "mobilenet",
         "quant": ['quant1', 'quant2', 'float'], 
         "weights": ['050', '075', '100'],
-        "stride": [8, 16] # docs say that 32 is supported, but returns 404 error. Their example also doesn't list 32.
+        "stride": [8, 16]
     },
     {
         "name": "resnet50",
@@ -49,11 +32,17 @@ MODELS = [
     }
 ]
 
-LOCAL_PATH = "/home/admin3srp/catkin_ws/src/ros_posenet/models"
-BASE_URL = "https://storage.googleapis.com"
-INTERMEDIARY_PATH = "tfjs-models/savedmodel/posenet"
+# Original Google URL and path to the models.
+BASE_URL = "https://storage.googleapis.com/tfjs-models/savedmodel/posenet"
 
 def build_url_list():
+    """Returns the list of available models.
+
+    The list of available models is a combination of BASE_URL and MODELS.
+    
+    Returns:
+        list -- List of URL with the JSON files describing the models. 
+    """
     model_urls = []
     for model in MODELS:
         name = model["name"]
@@ -61,19 +50,24 @@ def build_url_list():
             if model["weights"] is not None:
                 for weights in model["weights"]:
                     for stride in model["stride"]:
-                        model_url = "%s/%s/%s/%s/%s/model-stride%d.json" % (
-                                    BASE_URL, INTERMEDIARY_PATH, name, quant, 
+                        model_url = "%s/%s/%s/%s/model-stride%d.json" % (
+                                    BASE_URL, name, quant, 
                                     weights, stride)
                         model_urls.append(model_url)
             else:
                 for stride in model["stride"]:
-                    model_url = "%s/%s/%s/%s/model-stride%d.json" % (
-                                BASE_URL, INTERMEDIARY_PATH, name, quant, 
+                    model_url = "%s/%s/%s/model-stride%d.json" % (
+                                BASE_URL, name, quant, 
                                 stride)
                     model_urls.append(model_url)
     return model_urls
 
 def create_local_dir(local_file):
+    """Try to create the directory to save a given file if it doesn't exist.
+    
+    Arguments:
+        local_file {str} -- Absolute or relative path to the file.
+    """
     if not os.path.exists(os.path.dirname(local_file)):
         try:
             os.makedirs(os.path.dirname(local_file))
@@ -84,44 +78,58 @@ def create_local_dir(local_file):
 
 
 if __name__ == "__main__":
-    # Generates main URLs.
-    model_urls = build_url_list()
+    """Downloads the files from Google server and save to the disk.
+    """
+    default_path = os.path.dirname(os.path.realpath(__file__)) + "/../models"
     
-    if not create_local_dir(LOCAL_PATH):
-        res = raw_input("This will overwrite files in case they exist." 
-                        "Continue? (Y/n)")
-        if res != 'y' and res != 'Y':
-            print("Stopping")
-            sys.exit(1)
+    rospy.init_node("ros_posenet_download")
+    local_path = os.path.abspath(rospy.get_param("~path", default_path))
+    
+    rospy.loginfo("Saving models to: %s" % local_path)
+    
+    res = raw_input("This will overwrite files in case they exist." 
+                    "Continue? (Y/n)")
+    if res != 'y' and res != 'Y':
+        rospy.loginfo("Exiting.")
+        sys.exit(1)
+
+    model_urls = build_url_list()
 
     base_url_len = len(BASE_URL)+1
     for url in model_urls:
-        local_file = os.path.join(LOCAL_PATH, url[base_url_len:])
-        print("Downloading %s\nto %s" % (url, local_file))
+        local_file = os.path.join(local_path, url[base_url_len:])
+        rospy.loginfo("Downloading %s\nto %s" % (url, local_file))
 
         create_local_dir(local_file)
 
         model_file = requests.get(url)
         if model_file.status_code == 200:
             base_weight_url = url[:url.rfind('/')]
-            print("Download complete, saving to disk.")
+            rospy.loginfo("Download complete, saving to disk.")
             with open(local_file, "w") as f:
                 f.write(model_file.text)
 
             for weight_manifest in model_file.json()["weightsManifest"]:
                 for weight_file_name in weight_manifest["paths"]:
                     weight_url = "%s/%s" % (base_weight_url, weight_file_name)
-                    local_file = os.path.join(LOCAL_PATH, weight_url[base_url_len:])
+                    local_file = os.path.join(
+                        local_path, weight_url[base_url_len:])
                     
-                    print("Downloading %s\nto %s" % (weight_url, local_file))
+                    rospy.loginfo("Downloading %s\nto %s" % (
+                        weight_url, local_file))
                     
                     weight_file = requests.get(weight_url)
                     if weight_file.status_code == 200:
-                        print("Download complete, saving to disk.")
+                        rospy.loginfo("Download complete, saving to disk.")
                         with open(local_file, "wb") as f:
                             f.write(weight_file.content)
                     else:
-                        print("Error: could not download %s\nReturned code: %d" % (weight_url, weight_file.status_code))
+                        rospy.logerr("Could not download %s\n"
+                                     "Returned code: %d" % (
+                                     weight_url, weight_file.status_code))
         else:
-            print("error: %d" % model_file.status_code)
+            rospy.logerr("Could not download %s\nReturned code: %d" % (
+                url, model_file.status_code))
+    
+    rospy.loginfo("Finished downloading all the models.")
 

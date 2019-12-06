@@ -14,6 +14,7 @@
 // loaded first, and that depends on the configuration read from the launch
 // file.
 const tf = require('@tensorflow/tfjs');
+var path = require('path')
 
 // Packages required for managing the multiprocessing approach.
 const Mutex = require('async-mutex').Mutex;
@@ -24,29 +25,6 @@ const cv = require('opencv4nodejs');
 const { createImageData, createCanvas } = require('canvas')
 const { debugView } = require('./debug_view');
 
-
-function buildModelFileName(architecture, quantBytes, multiplier, outputStride){
-    //"file:///home/admin3srp/catkin_ws/src/ros_posenet/models/tfjs-models/savedmodel/posenet/mobilenet/float/075/model-stride16.json"
-    basePath = "file:///home/admin3srp/catkin_ws/src/ros_posenet/models/tfjs-models/savedmodel/posenet"
-    if(quantBytes == 1)
-        quantDir = "quant1"
-    else if (quantBytes == 2)
-        quantDir = "quant2"
-    else if (quantBytes == 4)
-        quantDir = "float"
-
-    if(architecture=='MobileNetV1'){
-        if(multiplier == 0.5)
-            multiplierDir = "050"
-        else if(multiplier == 0.75)
-            multiplierDir = "075"
-        else if(multiplier == 1.0)
-            multiplierDir = "100"
-        return `${basePath}/mobilenet/${quantDir}/${multiplierDir}/model-stride${outputStride}.json`;
-    }        
-    else if (architecture = 'ResNet50')
-        return `${basePath}/resnet50/${quantDir}/model-stride${outputStride}.json`;
-}
 
 /**
  * Provides the `/posenet` node and output topic.
@@ -81,16 +59,24 @@ async function main() {
     minPartConf = parseFloat(process.argv[11]);
     nmsRadius = parseInt(process.argv[12]);
     minPoseConf = parseFloat(process.argv[13]);
-    debug = (process.argv[14] == 'true');
+    modelsPath = process.argv[14];
+    debug = (process.argv[15] == 'true');
+    inputResolution = null;
+    net = null;
 
-    separatorIdx = process.argv[6].indexOf('x');
-    if (separatorIdx != -1){
-        inputResolution = {
-            width: parseInt(process.argv[6].slice(0, separatorIdx)),
-            height: parseInt(process.argv[6].slice(separatorIdx+1)),
+    try {
+        separatorIdx = process.argv[6].indexOf('x');
+        if (separatorIdx != -1){
+            inputResolution = {
+                width: parseInt(process.argv[6].slice(0, separatorIdx)),
+                height: parseInt(process.argv[6].slice(separatorIdx+1)),
+            }
+        } else{
+            inputResolution = parseInt(process.argv[6]);
         }
-    } else{
-        inputResolution = parseInt(process.argv[6]);
+    } catch {
+        console.log(`Could not parse inputResolution: '${process.argv[6]}'`);
+        process.exit(100);
     }
 
     // Load PoseNet dependencies and model.
@@ -108,13 +94,20 @@ async function main() {
         inputResolution: inputResolution,
         multiplier: multiplier,
         quantBytes: quantBytes,
-        modelUrl: buildModelFileName(architecture, quantBytes, multiplier, outputStride)
-        //modelUrl: "file:///home/admin3srp/catkin_ws/src/ros_posenet/models/tfjs-models/savedmodel/posenet/mobilenet/float/075/model-stride16.json"
     };
 
+    if(modelsPath!="")
+        posenet_config.modelUrl = 'file://' + buildModelFileName(modelsPath, 
+                            architecture, quantBytes, multiplier, outputStride);
+
     console.log(posenet_config)
-        
-    const net = await posenet.load(posenet_config);
+    
+    try {
+        net = await posenet.load(posenet_config);
+    } catch(e) {
+        console.log(`Could not create PoseNet. ${e}`);
+        process.exit(101);
+    }
 
     stateMutex.acquire().then(release => {
         currentState = State.WAITING_INPUT;
@@ -253,6 +246,32 @@ async function main() {
             canvas: imgCanvas,
             cvmat: img
         };
+    }
+
+    /**
+     * Creates the absolute path to the model file given the input parameters.
+     */
+    function buildModelFileName(){
+        if(quantBytes == 1)
+            quantDir = "quant1"
+        else if (quantBytes == 2)
+            quantDir = "quant2"
+        else if (quantBytes == 4)
+            quantDir = "float"
+    
+        if(architecture=='MobileNetV1'){
+            if(multiplier == 0.5)
+                multiplierDir = "050"
+            else if(multiplier == 0.75)
+                multiplierDir = "075"
+            else if(multiplier == 1.0)
+                multiplierDir = "100"
+            return path.join(modelsPath, 'mobilenet', quantDir, multiplierDir, 
+                             `model-stride${outputStride}.json`);
+        }        
+        else if (architecture = 'ResNet50')
+            return path.join(modelsPath, 'resnet50', quantDir, 
+                             `model-stride${outputStride}.json`);
     }
 }
 
