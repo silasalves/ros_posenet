@@ -1,4 +1,5 @@
 node_modules/
+models/
 npm-debug.log
 package-lock.json
 .vscode

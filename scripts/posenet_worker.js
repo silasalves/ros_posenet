@@ -25,6 +25,29 @@ const { createImageData, createCanvas } = require('canvas')
 const { debugView } = require('./debug_view');
 
 
+function buildModelFileName(architecture, quantBytes, multiplier, outputStride){
+    //"file:///home/admin3srp/catkin_ws/src/ros_posenet/models/tfjs-models/savedmodel/posenet/mobilenet/float/075/model-stride16.json"
+    basePath = "file:///home/admin3srp/catkin_ws/src/ros_posenet/models/tfjs-models/savedmodel/posenet"
+    if(quantBytes == 1)
+        quantDir = "quant1"
+    else if (quantBytes == 2)
+        quantDir = "quant2"
+    else if (quantBytes == 4)
+        quantDir = "float"
+
+    if(architecture=='MobileNetV1'){
+        if(multiplier == 0.5)
+            multiplierDir = "050"
+        else if(multiplier == 0.75)
+            multiplierDir = "075"
+        else if(multiplier == 1.0)
+            multiplierDir = "100"
+        return `${basePath}/mobilenet/${quantDir}/${multiplierDir}/model-stride${outputStride}.json`;
+    }        
+    else if (architecture = 'ResNet50')
+        return `${basePath}/resnet50/${quantDir}/model-stride${outputStride}.json`;
+}
+
 /**
  * Provides the `/posenet` node and output topic.
  * 
@@ -85,7 +108,11 @@ async function main() {
         inputResolution: inputResolution,
         multiplier: multiplier,
         quantBytes: quantBytes,
+        modelUrl: buildModelFileName(architecture, quantBytes, multiplier, outputStride)
+        //modelUrl: "file:///home/admin3srp/catkin_ws/src/ros_posenet/models/tfjs-models/savedmodel/posenet/mobilenet/float/075/model-stride16.json"
     };
+
+    console.log(posenet_config)
         
     const net = await posenet.load(posenet_config);
 
