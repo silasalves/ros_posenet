@@ -54,7 +54,8 @@
         <!-- Minimum confidence to consider a pose valid. -->
         <param name="min_pose_confidence" value="0.15" />
 
-        <!-- Multi-pose only: minimum confidence for the body parts.  -->
+        <!-- Multi-pose only: minimum confidence for the body parts, from 0.0 
+             to 1.0. -->
         <param name="min_part_confidence" value="0.1" />
 
         <!-- Radius of the Non-Maximum Suppression. -->
