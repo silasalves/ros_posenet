@@ -88,7 +88,6 @@ async function main() {
                                          '/image_raw');
     const paramPosesTopic = await getParam('/posenet/poses_topic', '/poses');
     const paramGPU = await getParam('/posenet/gpu', false);
-    const paramMaxDelay = await getParam('posenet/max_msg_time_diff', 0.03);
     const paramArchitecture = await getParam('/posenet/architecture', 
                                              'MobileNetV1');
     const paramMultiplier = await getParam('/posenet/multiplier', 0.5);

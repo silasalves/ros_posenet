@@ -10,11 +10,6 @@
         <!-- Name of the output topic for the detected poses. -->
         <param name="poses_topic" value="/poses" />
 
-        <!-- The maximum time difference in seconds between a new message
-             and the current time. Messages older than max_msg_time_diff 
-             are discarded. -->
-        <param name="max_msg_time_diff" value="0.03" />
-
         <!-- Whether PoseNet should run over the GPU (true) or CPU (false). -->
         <param name="gpu" value="false" />
 
@@ -40,7 +35,7 @@
         <param name="input_resolution" value="640x360" />
         
         <!-- MobileNetV1 only. Multiplier for the depth for all convolution ops.
-             Can be one of 1.01, 1.0, 0.75, or 0.50. -->
+             Can be one of 1.0, 0.75, or 0.50. -->
         <param name="multiplier" value="0.75" />
 
         <!-- Scale factor for the input images -->
