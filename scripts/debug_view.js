@@ -41,8 +41,8 @@ const connected_part_names = [
 const skeleton_colors=[
     new cv.Vec3(0, 0, 255),
     new cv.Vec3(0, 255, 255),
-    new cv.Vec3(0, 255, 255),
-    new cv.Vec3(0, 255, 255),
+    new cv.Vec3(255, 0, 0),
+    new cv.Vec3(0, 255, 0),
     new cv.Vec3(102, 102, 255),
     new cv.Vec3(128, 128, 128),
     new cv.Vec3(102, 0, 51),
